@@ -1,0 +1,61 @@
+import boto3
+from boto3.dynamodb.conditions import Key
+
+def lambda_handler(event, context):
+    print(event)
+    if event is None:
+      print("No event")
+      return "no event"
+    typeID = event["query"]["typeID"]
+    month = event["query"]["month"]
+    
+    print(month)
+    print(typeID)
+    TABLE_NAME = "cabs-data-small"
+    # Creating the DynamoDB Client
+    dynamodb_client = boto3.client('dynamodb', region_name="us-east-2")
+
+    # Creating the DynamoDB Table Resource
+    dynamodb = boto3.resource('dynamodb', region_name="us-east-2")
+    table = dynamodb.Table(TABLE_NAME)
+    #dynamodb1 = boto3.resource('dynamodb', endpoint_url="https://dynamodb.us-east-2.amazonaws.com")
+    #table = dynamodb.Table('cabs-data-small')
+    #scan_kwargs = {
+    #     
+    #        #'FilterExpression': Key('#uuid').eq("AA02274_948RVGYRR_2019-05-23T14:45:42"),
+    #        'ProjectionExpression': "ProviderCode, PassengerNum, FareAmount, StartDateTime",
+    #       
+    #        'KeyConditionExpression': Key('ProviderCode').eq("1V9O4R2M7EI1T53") & Key('StartDateTime').begins_with('2019-01')
+             
+    #    }
+        
+    done = False
+    start_key = None
+    #while not done:
+    #    if start_key:
+            #scan_kwargs['ExclusiveStartKey'] = start_key
+        #response = table.scan(**scan_kwargs)
+    response = dynamodb_client.scan(
+        TableName=TABLE_NAME,
+        ProjectionExpression = "ProviderCode, PassengerNum, FareAmount, StartDateTime",
+        FilterExpression="ProviderCode = :pc AND begins_with (StartDateTime, :dt)",
+        ExpressionAttributeValues={
+        ':pc': {'S': typeID},
+        ':dt': {'S': month}
+        }
+    )
+
+    print(response['Items'])
+    fareTotal = 0.0
+    for item in response['Items']:
+        fare = item['FareAmount'].get('S')
+        fareTotal = float(fare) + fareTotal
+    print(fareTotal)
+   
+   
+    return(fareTotal)
+       # display_movies(response.get('Items', []))
+    print(response)
+    return(response)
+    #    start_key = response.get('LastEvaluatedKey', None)
+    #    done = start_key is None
